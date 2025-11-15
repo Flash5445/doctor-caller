@@ -1,0 +1,24 @@
+# core backend framework
+flask==3.0.0
+
+# database
+sqlalchemy==2.0.36
+
+# data processing
+pandas==2.2.0
+numpy==1.26.4
+
+# testing
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# code quality
+black==23.12.1
+ruff==0.1.8
+mypy==1.8.0
+
+# environment variables
+python-dotenv==1.0.0
+
+# llm/ai services
+anthropic==0.40.0
