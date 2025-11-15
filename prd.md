@@ -1,9 +1,3 @@
-Gotcha. I’ll make reasonable assumptions rather than ask you follow-up questions, so you can hand this straight to an agentic coding assistant and start building.
-
-Below is a **self-contained PRD** with: abstract, tech stack, implementation protocol, prompts, and system architecture, all modularized into clear steps.
-
----
-
 ## 1. Abstract
 
 **Product Name (working):** AI Doctor Call Agent (AIDCA)
@@ -30,61 +24,36 @@ Build an application that, at the press of a button, does the following:
 ### 2.1 Core Application
 
 * **Backend**
-
+  
   * Language: **Python 3.x**
-  * Framework: **FastAPI** (typed, async, easy to expose REST endpoints)
-  * Task queue (optional for later): **Celery** or **RQ** + Redis for background job processing (call orchestration, retries).
+  * Framework: **Flask**
 
 * **Frontend**
-
+  
   * Framework: **React** or **Next.js**
   * UI Components: Material UI / Chakra UI (your choice)
   * Platform: Web app (MVP) with one main user action: **“Call Doctor Now”** button.
 
-* **Database / Storage**
-
-  * **PostgreSQL** (optionally **TimescaleDB extension** for time-series vitals).
-  * For MVP with Kaggle:
-
-    * Ingest CSV into Postgres (vitals table) OR
-    * Use a local **Parquet/CSV + pandas** layer and abstract it behind a data-access interface (easier to swap later).
-
-* **Auth / Config**
-
-  * Simple **JWT-based auth** or passwordless (for MVP).
-  * A **“Provider Profile”** record storing:
-
-    * Hospital/doctor phone number
-    * Patient ID mapping
-    * Call preferences (language, keyphrases, etc.)
-
 ### 2.2 External Services
 
 * **LLM Engine**
-
+  
   * **Anthropic Claude API**
-
+    
     * Text completions (for generating summaries, call scripts, follow-up prompts).
 
 * **Telephony**
-
+  
   * **Twilio Programmable Voice**
-
+    
     * Outbound calls
     * TwiML for TTS prompts
     * (Stretch) Twilio Media Streams for real-time speech-to-text/LLM integration.
 
-* **(Optional) Speech & Transcription**
-
+* **Speech & Transcription**
+  
   * Twilio’s native TTS
   * For transcription (if doing two-way calls): Twilio + a speech-to-text service (or Claude if you later add voice support).
-
-* **Infra**
-
-  * Docker + Docker Compose
-  * Deploy on **Render / Railway / Fly.io / AWS** (MVP doesn’t mandate one).
-
----
 
 ## 3. Data Model (MVP)
 
@@ -128,25 +97,27 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Initialize a monorepo (or two repos) with:
-
-   * `/backend` (FastAPI)
+   
+   * `/backend` (Flask)
    * `/frontend` (React/Next.js)
-2. Add Dockerfiles and docker-compose for Postgres + app.
-3. Configure `.env` for:
 
+2. Add Dockerfiles and docker-compose for Postgres + app.
+
+3. Configure `.env` for:
+   
    * `ANTHROPIC_API_KEY`
    * `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`
    * `TWILIO_CALLER_ID` (verified Twilio number)
    * `PROVIDER_PHONE_NUMBER` (target hospital/doctor)
+
 4. Lint & formatting: `black`, `ruff` for Python; `eslint`, `prettier` for JS/TS.
 
 **Prompt for Agent (Step 0):**
 
 > You are a senior full-stack engineer.
 > Create a monorepo with `/backend` using FastAPI (Python) and `/frontend` using Next.js (TypeScript).
-> Add Dockerfiles for both and a docker-compose file that also runs a Postgres instance.
 > Configure environment variables for Anthropic and Twilio API keys and for a provider phone number.
-> Include basic README instructions to run the stack locally with Docker.
+> Include basic README instructions to run the app locally.
 
 ---
 
@@ -157,21 +128,22 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Write a one-off **ingestion script** (`scripts/ingest_kaggle_vitals.py`) that:
-
+   
    * Reads Kaggle CSV (file path configurable).
    * Normalizes columns to match `vitals` schema.
-   * Inserts into Postgres in batches.
-2. Implement `VitalsRepository` with methods:
 
+2. Implement `VitalsRepository` with methods:
+   
    * `get_recent_vitals(patient_id: str, window_hours: int = 2)`
    * `get_latest_vitals(patient_id: str)`
+
 3. Add unit tests for the repository (mock DB or test DB).
 
 **Prompt for Agent (Step 1):**
 
 > You are a Python backend engineer.
 > In the `/backend` folder, implement a `vitals` module that contains:
->
+> 
 > * A SQLAlchemy model for a `vitals` table with fields: id, patient_id, timestamp, heart_rate, blood_pressure_systolic, blood_pressure_diastolic, respiratory_rate, spo2, temperature.
 > * A `VitalsRepository` class with methods `get_recent_vitals(patient_id: str, window_hours: int = 2)` and `get_latest_vitals(patient_id: str)`, using Postgres.
 >   Also create a `scripts/ingest_kaggle_vitals.py` file that reads a Kaggle CSV, normalizes columns to the model, and bulk-inserts into the table.
@@ -185,24 +157,27 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Implement a **rule-based scoring** module (e.g., `risk_engine.py`) that:
-
+   
    * Examines last 2 hours of vitals.
+   
    * Computes simple flags like:
-
+     
      * Tachycardia if heart_rate > 100 for sustained periods.
      * Hypotension if systolic < 90.
      * Hypoxia if SpO2 < 92.
+   
    * Returns:
-
+     
      * `risk_level` (string: `"low" | "moderate" | "high"`)
      * `supporting_signals` (list of strings describing abnormal patterns)
+
 2. Ensure **no diagnostic claims** in code or user-facing text: purely “risk level based on thresholds”.
 
 **Prompt for Agent (Step 2):**
 
 > In `/backend`, create a `risk_engine.py` module with a function `assess_risk(vitals: List[VitalRecord]) -> dict`.
 > The function should compute a `risk_level` ("low", "moderate", "high") and a list of `signals` based on simple thresholds:
->
+> 
 > * heart_rate > 110 -> increased risk signal
 > * systolic < 90 or diastolic < 60 -> low blood pressure signal
 > * spo2 < 92 -> low oxygen signal
@@ -218,12 +193,14 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Implement `summary_service.py` with:
-
+   
    * `build_summary_prompt(vitals, risk_assessment, patient_context)`
    * `generate_vitals_summary(...)` which calls Claude and returns a short text (e.g., 2–3 paragraphs).
-2. Include disclaimers in the prompt: LLM is assisting with summarization, not diagnosing.
-3. Format the summary to include:
 
+2. Include disclaimers in the prompt: LLM is assisting with summarization, not diagnosing.
+
+3. Format the summary to include:
+   
    * Patient identifier (non-PII label for MVP).
    * Time window.
    * Key trends.
@@ -233,13 +210,13 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 
 > System:
 > You are a medical note summarization assistant. You are not a doctor and must not provide diagnoses or treatment plans. You only summarize the provided vital signs and highlight concerning trends using neutral language.
->
+> 
 > User:
 > Here is time-series vital data for a patient over the last 2 hours:
 > {{STRUCTURED_VITALS_JSON}}
 > Risk assessment: {{RISK_LEVEL}} with signals: {{SIGNALS}}
 > Generate a short summary (max 200 words) for a nurse or doctor who will receive a phone call.
->
+> 
 > * Mention the time window and general trend (stable, improving, worsening).
 > * Mention any abnormal values neutrally.
 > * Avoid diagnosis or treatment advice.
@@ -248,7 +225,7 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 
 > In `/backend`, implement a `summary_service.py` file.
 > Create a function `generate_vitals_summary(patient_id: str, vitals: List[VitalRecord], risk: dict) -> str` that:
->
+> 
 > * Constructs a prompt for Anthropic Claude using the rules above.
 > * Calls Claude via HTTP using `ANTHROPIC_API_KEY`.
 > * Returns a short textual summary suitable for a clinician, max 200 words.
@@ -263,30 +240,32 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Endpoints (MVP):**
 
 1. `GET /patients/{patient_id}/vitals/recent?hours=2`
-
+   
    * Returns recent vitals JSON.
 
 2. `POST /call-doctor`
-
+   
    * Body: `{ "patient_id": "string" }`
+   
    * Triggers the full workflow:
-
+     
      1. Fetch last 2 hours of vitals.
      2. Run risk assessment.
      3. Generate summary via Claude.
      4. Initiate Twilio call with summary script.
 
 3. `GET /calls/{call_id}/status`
-
+   
    * Returns Twilio call status.
 
 **Prompt for Agent (Step 4):**
 
-> In `/backend`, create FastAPI endpoints:
->
+> In `/backend`, create Flask API endpoints:
+> 
 > * `GET /patients/{patient_id}/vitals/recent` returning the last N hours of vitals.
+> 
 > * `POST /call-doctor` which:
->
+>   
 >   * Reads `patient_id` from the body.
 >   * Uses `VitalsRepository` to fetch last 2 hours of vitals.
 >   * Uses `assess_risk` to compute risk.
@@ -303,18 +282,20 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Implement `call_service.py` with:
-
+   
    * `start_call(summary_text: str) -> str` (returns Twilio `call_sid`).
+
 2. Flow:
-
+   
    * `start_call`:
-
+     
      * Calls Twilio’s Programmable Voice API to dial `PROVIDER_PHONE_NUMBER`.
      * Provides a webhook URL (e.g., `/twilio/voice`) that returns TwiML.
+
 3. Implement `/twilio/voice` endpoint:
-
+   
    * Responds with TwiML `<Say>` (or `<Play>` if you generate an audio file) reading:
-
+     
      * Short intro: “This is an automated summary call; not a diagnosis.”
      * Patient/ID + summary text.
      * Optional: ask provider to press a key to confirm receipt (DTMF collection).
@@ -338,29 +319,27 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 
 > In `/backend`, implement `call_service.py` that uses the Twilio Python SDK.
 > Create a `start_call(summary_text: str) -> str` function that:
->
+> 
 > * Starts an outbound call from `TWILIO_CALLER_ID` to `PROVIDER_PHONE_NUMBER`.
 > * Sets the call’s `url` to a FastAPI route `/twilio/voice?call_id={call_id}` which returns TwiML using the provided summary_text.
 >   Also implement the `/twilio/voice` route that returns TwiML to read a disclaimer and then the summary text via `<Say>`.
 
 ---
 
-### Step 6 – (Optional) Interactive Call Mode with Claude
+### Step 6 – Interactive Call Mode with Claude
 
-**Goal:** Enable future two-way calls where Claude helps ask/answer structured questions (still not diagnosing).
+**Goal:** Enable two-way calls where Claude helps ask/answer structured questions (still not diagnosing).
 
-**MVP Decision:** For now, **one-way summary call** is sufficient. This step is a future extension.
-
-**High-level tasks for later:**
+**High-level tasks:**
 
 * Use **Twilio Media Streams** to stream audio to a transcription service.
-* Pass live transcript to Claude; have it:
 
+* Pass live transcript to Claude; have it:
+  
   * Extract structured “doctor advice” text.
   * Confirm disclaimers.
-* Store doctor’s advice as a note in DB.
 
-(You can defer implementation until MVP works.)
+* Store doctor’s advice as a note in DB.
 
 ---
 
@@ -371,22 +350,24 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Build a simple dashboard page with:
-
+   
    * Patient selector (dropdown or pre-configured patient_id for MVP).
    * “Last 2 hours vitals” mini-chart (optional) using an API call.
    * **Primary button:** “Call Doctor Now.”
-2. When button is clicked:
 
+2. When button is clicked:
+   
    * Call `POST /call-doctor` with `patient_id`.
    * Show loading state, then show success or error with the `call_id`.
-3. Optionally:
 
+3. Optionally:
+   
    * Poll `GET /calls/{call_id}/status` to show live Twilio status (ringing, in-progress, completed).
 
 **Prompt for Agent (Step 7):**
 
 > In `/frontend`, create a Next.js page `/dashboard` with:
->
+> 
 > * A dropdown to select a `patient_id` (hard-code a few IDs for the Kaggle data).
 > * A "Call Doctor Now" button.
 >   When clicked, it should:
@@ -403,13 +384,15 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Create a `CallLog` table:
-
+   
    * `call_id`, `patient_id`, `timestamp`, `risk_level`, `summary_snippet`, `twilio_sid`, `status`.
+
 2. Store:
-
+   
    * Prompt and response hashes (not full PHI if using real data in future).
-3. Add:
 
+3. Add:
+   
    * Basic error handling in all endpoints (especially Twilio and Claude calls).
    * Rate limiting / simple throttling for call operations.
 
@@ -428,12 +411,14 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 **Tasks:**
 
 1. Add frontend banners & dialogs:
-
+   
    * “This tool does not provide medical diagnosis or treatment.”
    * “Always consult a licensed healthcare professional.”
-2. Add terms/privacy placeholders.
-3. Architect for future HIPAA-style compliance:
 
+2. Add terms/privacy placeholders.
+
+3. Architect for future HIPAA-style compliance:
+   
    * Use environment variables and secrets for keys.
    * Use HTTPS in deployment.
    * Plan encryption for any PHI fields if/when real data is used.
@@ -450,13 +435,13 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
 ### 5.1 High-Level Components
 
 1. **Frontend Web App**
-
+   
    * Patient selection
    * “Call Doctor Now” button
    * Displays call status and last summary.
 
 2. **Backend API (FastAPI)**
-
+   
    * Vitals repository (Postgres).
    * Risk engine.
    * Summary service (Claude).
@@ -464,38 +449,44 @@ Each step has: **Goal, Tasks**, and an example **Prompt for an Agentic Coding As
    * Logging & auth.
 
 3. **External Services**
-
+   
    * Anthropic Claude API (text summarization).
    * Twilio Voice API (telephony).
    * (Future) Speech-to-text + real-time streaming.
 
 4. **Database**
-
+   
    * `vitals` table (Kaggle data).
    * `call_logs` table.
 
 ### 5.2 Sequence Flow – “Call Doctor Now”
 
 1. **User clicks “Call Doctor Now”** on frontend with selected `patient_id`.
-2. **Frontend → Backend**: `POST /call-doctor { patient_id }`.
-3. **Backend:**
 
+2. **Frontend → Backend**: `POST /call-doctor { patient_id }`.
+
+3. **Backend:**
+   
    1. Fetch last 2 hours of vitals via `VitalsRepository.get_recent_vitals`.
    2. Run `assess_risk` to get `risk_level` + signals.
    3. Call `generate_vitals_summary` → Claude → `summary_text`.
    4. Call `call_service.start_call(summary_text)` → Twilio.
    5. Insert `CallLog` row.
    6. Return `call_id` + message to frontend.
+
 4. **Twilio:**
-
+   
    * Initiates outbound call to `PROVIDER_PHONE_NUMBER`.
+   
    * On answer, Twilio hits `/twilio/voice` webhook.
+   
    * Backend returns TwiML that:
-
+     
      * Plays disclaimer.
      * Reads `summary_text`.
-5. **Frontend**:
 
+5. **Frontend**:
+   
    * Shows success message with `call_id`.
    * (Optional) polls `/calls/{call_id}/status`.
 
